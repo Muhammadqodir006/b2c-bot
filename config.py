@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     db_port: int
     db_name: str
     
+    client_bot_token: str
+    master_bot_token: str
+    
     class Config:
         env_file = ".env"
         
