@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from database.engine import async_session
@@ -112,5 +112,25 @@ async def get_bookings_for_reminder(
                     Booking.scheduled_at <= remind_before,
                 )
             )
+        )
+        return list(result.scalars().all())
+    
+async def get_master_bookings_today(master_id: int) -> list[Booking]:
+    async with async_session() as session:
+        today_start = datetime.combine(datetime.now().date(), time.min)
+        today_end = datetime.combine(datetime.now().date(), time.max)
+
+        result = await session.execute(
+            select(Booking)
+            .options(selectinload(Booking.user))
+            .where(
+                and_(
+                    Booking.master_id == master_id,
+                    Booking.scheduled_at >= today_start,
+                    Booking.scheduled_at <= today_end,
+                    Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+                )
+            )
+            .order_by(Booking.scheduled_at)
         )
         return list(result.scalars().all())

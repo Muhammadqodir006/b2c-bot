@@ -69,7 +69,9 @@ class Master(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     salon_id: Mapped[int] = mapped_column(ForeignKey("salons.id"))
     telegram_id: Mapped[int] = mapped_column(unique=True, nullable=True)
+    phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=True)
     full_name: Mapped[str] = mapped_column(String(100))
+    language: Mapped[str] = mapped_column(String(5), default="uz")
 
     salon: Mapped["Salon"] = relationship(back_populates="masters")
     bookings: Mapped[list["Booking"]] = relationship(back_populates="master")
