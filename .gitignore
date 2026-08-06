@@ -4,3 +4,4 @@ __pychache__/
 .env
 *.db
 .vscode/
+.venv/
