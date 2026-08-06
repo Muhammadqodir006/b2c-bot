@@ -41,3 +41,16 @@ async def get_user(telegram_id: int) -> User | None:
             select(User).where(User.telegram_id == telegram_id)
         )
         return result.scalar_one_or_none()
+    
+async def update_language(telegram_id: int, language: str) -> User | None:
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).where(User.telegram_id == telegram_id)
+        )
+        user = result.scalar_one_or_none()
+        if user is None:
+            return None
+        user.language = language
+        await session.commit()
+        await session.refresh(user)
+        return user

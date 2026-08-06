@@ -39,3 +39,36 @@ async def get_master_by_telegram_id(telegram_id: int) -> Master | None:
             select(Master).where(Master.telegram_id == telegram_id)
         )
         return result.scalar_one_or_none()
+    
+async def get_master_by_phone(phone: str) -> Master | None:
+    async with async_session() as session:
+        result = await session.execute(
+            select(Master).where(Master.phone == phone)
+        )
+        return result.scalar_one_or_none()
+    
+async def link_master_telegram(master_id: int, telegram_id: int) -> Master | None:
+    async with async_session() as session:
+        result = await session.execute(
+            select(Master).where(Master.id == master_id)
+        )
+        master = result.scalar_one_or_none()
+        if master is None:
+            return None
+        master.telegram_id = telegram_id
+        await session.commit()
+        await session.refresh(master)
+        return master
+    
+async def update_master_language(master_id: int, language: str) -> Master | None:
+    async with async_session() as session:
+        result = await session.execute(
+            select(Master).where(Master.id == master_id)
+        )
+        master = result.scalar_one_or_none()
+        if master is None:
+            return None
+        master.language = language
+        await session.commit()
+        await session.refresh(master)
+        return master
