@@ -35,11 +35,13 @@ def get_master_menu_kb(language: str = "uz") -> ReplyKeyboardMarkup:
         buttons = [
             [KeyboardButton(text="📅 Bugungi grafik")],
             [KeyboardButton(text="⏳ Vaqtni yopish")],
+            [KeyboardButton(text="👤 Profil")],
         ]
     else:
         buttons = [
             [KeyboardButton(text="📅 Расписание на сегодня")],
             [KeyboardButton(text="⏳ Закрыть время")],
+            [KeyboardButton(text="👤 Профиль")],
         ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 

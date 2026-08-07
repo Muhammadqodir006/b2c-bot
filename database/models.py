@@ -13,6 +13,7 @@ class BookingStatus(str, enum.Enum):
     completed = "completed"
     cancelled = "cancelled"
     no_show = "no_show"
+    blocked = "blocked"
 
 
 class User(Base):
@@ -81,10 +82,10 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
     salon_id: Mapped[int] = mapped_column(ForeignKey("salons.id"))
     master_id: Mapped[int] = mapped_column(ForeignKey("masters.id"))
-    service_id: Mapped[int] = mapped_column(ForeignKey("services.id"))
+    service_id: Mapped[int] = mapped_column(ForeignKey("services.id"), nullable=True)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime)
     status: Mapped[BookingStatus] = mapped_column(
         Enum(BookingStatus), default=BookingStatus.pending

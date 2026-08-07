@@ -67,7 +67,7 @@ async def get_master_bookings_for_slot(
             select(Booking).where(
                 and_(
                     Booking.master_id == master_id,
-                    Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+                    Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed, BookingStatus.blocked,]),
                     Booking.scheduled_at >= start_time,
                     Booking.scheduled_at < end_time,
                 )
@@ -134,3 +134,23 @@ async def get_master_bookings_today(master_id: int) -> list[Booking]:
             .order_by(Booking.scheduled_at)
         )
         return list(result.scalars().all())
+    
+async def block_time_slot(
+    master_id: int,
+    salon_id: int,
+    start_time: datetime,
+    end_time: datetime,
+) -> Booking:
+    async with async_session() as session:
+        booking = Booking(
+            master_id=master_id,
+            salon_id=salon_id,
+            user_id=None,
+            service_id=None,
+            scheduled_at=start_time,
+            status=BookingStatus.blocked,
+        )
+        session.add(booking)
+        await session.commit()
+        await session.refresh(booking)
+        return booking
