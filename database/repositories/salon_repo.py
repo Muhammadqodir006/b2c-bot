@@ -72,3 +72,13 @@ async def update_master_language(master_id: int, language: str) -> Master | None
         await session.commit()
         await session.refresh(master)
         return master
+
+async def get_salons_by_category(category_id: int) -> list[Salon]:
+    async with async_session() as session:
+        result = await session.execute(
+            select(Salon)
+            .join(Service, Service.salon_id == Salon.id)
+            .where(Service.category_id == category_id)
+            .distinct()
+        )
+        return list(result.scalars().all())
