@@ -86,10 +86,8 @@ async def handle_arrived(
     callback: CallbackQuery,
     callback_data: BookingArrivedCallback,
 ):
-    booking = await update_booking_status(
-        callback_data.booking_id,
-        BookingStatus.completed,
-    )
+    await update_booking_status(callback_data.booking_id, BookingStatus.completed)
+    booking = await get_booking(callback_data.booking_id)
 
     if booking is None:
         await callback.answer("Bron topilmadi.", show_alert=True)
@@ -111,10 +109,8 @@ async def handle_no_show(
     callback: CallbackQuery,
     callback_data: BookingNoShowCallback,
 ):
-    booking = await update_booking_status(
-        callback_data.booking_id,
-        BookingStatus.no_show,
-    )
+    await update_booking_status(callback_data.booking_id, BookingStatus.no_show)
+    booking = await get_booking(callback_data.booking_id)
 
     if booking is None:
         await callback.answer("Bron topilmadi.", show_alert=True)

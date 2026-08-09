@@ -52,7 +52,7 @@ async def nearby_salons_result(message: Message):
     lang = user.language if user else "uz"
 
     nearby = await get_nearby_salons(
-        message.location.latitude, message.location.longitude, radius_km=50.0
+        message.location.latitude, message.location.longitude, 
     )
 
     if not nearby:
