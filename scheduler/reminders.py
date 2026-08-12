@@ -5,11 +5,11 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.date import DateTrigger
 
 from database.repositories.booking_repo import get_booking
-from services.time_service import now_utc, to_local, to_utc
+from services.time_service import now_utc, to_local
 
 logger = logging.getLogger(__name__)
 
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(timezone="UTC")
 
 
 def start_scheduler():
@@ -21,12 +21,12 @@ def start_scheduler():
 
 async def schedule_booking_reminders(bot: Bot, booking_id: int, scheduled_at):
     """
-    Schedules reminder jobs for a booking:
-    - 2 hours before the scheduled time
-    - 15 minutes before the scheduled time
-    """
-    scheduled_at = to_utc(scheduled_at)
+    Bron uchun eslatma job'larini rejalashtiradi:
+    - 2 soat oldin
+    - 15 daqiqa oldin
 
+    scheduled_at — bazadagi qiymat, ALLAQACHON UTC. Qayta konvertatsiya qilinmaydi.
+    """
     # 2 soat oldin
     remind_2h = scheduled_at - timedelta(hours=2)
     if remind_2h > now_utc():
@@ -53,7 +53,7 @@ async def schedule_booking_reminders(bot: Bot, booking_id: int, scheduled_at):
 
 
 def cancel_booking_reminders(booking_id: int):
-    """Cancels scheduled reminders for a specific booking."""
+    """Bekor qilingan bron uchun rejalashtirilgan eslatmalarni bekor qiladi."""
     for reminder_type in ["2h", "15m", "review"]:
         job_id = f"reminder_{reminder_type}_{booking_id}"
         if scheduler.get_job(job_id):
@@ -62,7 +62,7 @@ def cancel_booking_reminders(booking_id: int):
 
 
 async def send_reminder(bot: Bot, booking_id: int, reminder_type: str):
-    """Sends reminder message to user via Telegram Bot."""
+    """Foydalanuvchiga Telegram orqali eslatma xabarini yuboradi."""
     booking = await get_booking(booking_id)
     if booking is None or booking.user is None:
         logger.warning(f"Booking or user not found for booking_id={booking_id}")
@@ -79,15 +79,15 @@ async def send_reminder(bot: Bot, booking_id: int, reminder_type: str):
         )
     elif reminder_type == "15m":
         text = (
-            f"⏰ 15 daqiqadan so'ng broningiz boshlanadi!"
+            "⏰ 15 daqiqadan so'ng broningiz boshlanadi!"
             if lang == "uz"
-            else f"⏰ Через 15 минут начинается ваша запись!"
+            else "⏰ Через 15 минут начинается ваша запись!"
         )
     elif reminder_type == "review":
         text = (
-            f"🌟 Xizmatimizdan foydalanganingiz uchun rahmat! Iltimos, sharh qoldiring."
+            "🌟 Xizmatimizdan foydalanganingiz uchun rahmat! Iltimos, sharh qoldiring."
             if lang == "uz"
-            else f"🌟 Спасибо, что воспользовались нашей услугой! Пожалуйста, оставьте отзыв."
+            else "🌟 Спасибо, что воспользовались нашей услугой! Пожалуйста, оставьте отзыв."
         )
     else:
         text = (

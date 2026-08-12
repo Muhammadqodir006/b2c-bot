@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     client_bot_token: str
     master_bot_token: str
-
+    support_bot_token: str
     admin_ids: str
 
     class Config:
