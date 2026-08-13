@@ -2,10 +2,13 @@ from aiogram import Bot, Router
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
+from config import settings
 from database.models import BookingStatus
 from database.repositories.booking_repo import get_booking, update_booking_status
 from services.time_service import to_local
+from handlers.client.review import send_review_request
+
+client_bot = Bot(token=settings.client_bot_token)
 
 
 router = Router()
@@ -85,6 +88,7 @@ async def send_new_booking_notification(
 async def handle_arrived(
     callback: CallbackQuery,
     callback_data: BookingArrivedCallback,
+    bot: Bot
 ):
     await update_booking_status(callback_data.booking_id, BookingStatus.completed)
     booking = await get_booking(callback_data.booking_id)
@@ -102,6 +106,8 @@ async def handle_arrived(
 
     await callback.message.edit_text(text)
     await callback.answer()
+    
+    await send_review_request(client_bot, callback_data.booking_id)
 
 
 @router.callback_query(BookingNoShowCallback.filter())

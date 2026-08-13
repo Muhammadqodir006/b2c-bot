@@ -7,6 +7,8 @@ from database.repositories.salon_repo import get_all_salons
 from services.geo_service import get_nearby_salons
 from services.salon_service import get_salons_by_category
 from keyboards.client.main_kb import get_main_menu_kb
+from aiogram.fsm.context import FSMContext
+from states.booking_states import BookingStates
 
 router = Router()
 
@@ -111,3 +113,16 @@ async def category_selected(callback, callback_data: CategoryCallback):
     header = "Topilgan salonlar:\n\n" if lang == "uz" else "Найденные салоны:\n\n"
     await callback.message.answer(header + "\n".join(lines))
     await callback.answer()
+    
+@router.message(F.text.in_(["📅 Bron qilish", "📅 Записаться"]))
+async def start_booking_from_menu(message: Message, state: FSMContext):
+    from database.repositories.salon_repo import get_all_salons
+    from keyboards.client.booking_kb import salons_keyboard
+
+    salons = await get_all_salons()
+    if not salons:
+        await message.answer("Hozircha salonlar mavjud emas.")
+        return
+
+    await state.set_state(BookingStates.choosing_salon)
+    await message.answer("🏢 Salonni tanlang:", reply_markup=salons_keyboard(salons))

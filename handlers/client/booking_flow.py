@@ -1,5 +1,8 @@
-from datetime import datetime, timedelta
-
+from datetime import timedelta
+from aiogram import Bot
+from config import settings
+from handlers.master.notifications import send_new_booking_notification
+from scheduler.reminders import schedule_booking_reminders
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
@@ -16,6 +19,10 @@ from keyboards.client.booking_kb import (
 
 from database.repositories import salon_repo, booking_repo
 from database.repositories.user_repo import get_or_create_user
+from services.time_service import now_utc, to_utc, to_local
+from services.booking_service import is_slot_available
+
+master_bot = Bot(token=settings.master_bot_token)
 
 
 router = Router()
@@ -222,17 +229,17 @@ async def show_available_times(
     selected_master_id = data.get("master_id")
     duration = data["duration_minutes"]
 
-    now = datetime.now()
+    # Hozirgi vaqtni Toshkent vaqtida hisoblaymiz — ish vaqti ham shu bo'yicha
+    now_local = to_local(now_utc())
 
-    # Bugungi kun uchun 09:00 - 18:00 oralig'i
-    work_start = now.replace(
+    work_start_local = now_local.replace(
         hour=9,
         minute=0,
         second=0,
         microsecond=0,
     )
 
-    work_end = now.replace(
+    work_end_local = now_local.replace(
         hour=18,
         minute=0,
         second=0,
@@ -241,29 +248,31 @@ async def show_available_times(
 
     available_times = []
 
-    current = work_start
+    current_local = work_start_local
 
-    while current + timedelta(minutes=duration) <= work_end:
+    while current_local + timedelta(minutes=duration) <= work_end_local:
 
-        # O'tib ketgan vaqtlarni ko'rsatmaymiz
-        if current <= now:
-            current += timedelta(minutes=30)
+        # O'tib ketgan vaqtlarni ko'rsatmaymiz (Toshkent vaqti bo'yicha solishtirish)
+        if current_local <= now_local:
+            current_local += timedelta(minutes=30)
             continue
 
-        slot_end = current + timedelta(minutes=duration)
+        # Bazada solishtirish uchun UTC'ga aylantiramiz
+        current_utc = to_utc(current_local)
+        slot_end_utc = current_utc + timedelta(minutes=duration)
 
         # Agar foydalanuvchi aniq usta tanlagan bo'lsa
         if selected_master_id is not None:
 
             bookings = await booking_repo.get_master_bookings_for_slot(
                 selected_master_id,
-                current,
-                slot_end,
+                current_utc,
+                slot_end_utc,
             )
 
             if not bookings:
                 available_times.append(
-                    current.strftime("%H:%M")
+                    current_local.strftime("%H:%M")
                 )
 
         # "Farqi yo'q" bo'lsa
@@ -273,18 +282,18 @@ async def show_available_times(
                 bookings = (
                     await booking_repo.get_master_bookings_for_slot(
                         master.id,
-                        current,
-                        slot_end,
+                        current_utc,
+                        slot_end_utc,
                     )
                 )
 
                 if not bookings:
                     available_times.append(
-                        current.strftime("%H:%M")
+                        current_local.strftime("%H:%M")
                     )
                     break
 
-        current += timedelta(minutes=30)
+        current_local += timedelta(minutes=30)
 
     if not available_times:
         await callback.message.edit_text(
@@ -318,16 +327,18 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
 
     hour, minute = map(int, selected_time.split(":"))
 
-    scheduled_at = datetime.now().replace(
+    # Tanlangan vaqt — Toshkent (local) vaqti
+    now_local = to_local(now_utc())
+    scheduled_at_local = now_local.replace(
         hour=hour,
         minute=minute,
         second=0,
         microsecond=0,
     )
 
-    slot_end = scheduled_at + timedelta(
-        minutes=duration
-    )
+    # Bazaga yozish/solishtirish uchun UTC'ga aylantiramiz
+    scheduled_at_utc = to_utc(scheduled_at_local)
+    slot_end_utc = scheduled_at_utc + timedelta(minutes=duration)
 
     masters = await salon_repo.get_masters_by_salon(salon_id)
 
@@ -348,8 +359,8 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
             bookings = (
                 await booking_repo.get_master_bookings_for_slot(
                     master.id,
-                    scheduled_at,
-                    slot_end,
+                    scheduled_at_utc,
+                    slot_end_utc,
                 )
             )
 
@@ -373,8 +384,8 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
 
         bookings = await booking_repo.get_master_bookings_for_slot(
             selected_master_id,
-            scheduled_at,
-            slot_end,
+            scheduled_at_utc,
+            slot_end_utc,
         )
 
         if bookings:
@@ -385,8 +396,8 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
             return
 
     await state.update_data(
-        scheduled_at=scheduled_at,
-        scheduled_time=selected_time,
+        scheduled_at=scheduled_at_utc,  # UTC — bazaga shu holda yoziladi
+        scheduled_time=selected_time,    # faqat ko'rsatish uchun (local matn)
     )
 
     await state.set_state(BookingStates.confirming)
@@ -419,8 +430,24 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
 async def confirm_booking(
     callback: CallbackQuery,
     state: FSMContext,
+    bot: Bot,
 ):
     data = await state.get_data()
+
+    # Oxirgi tekshiruv — tasdiqlashgacha vaqt band bo'lib qolmaganmi
+    available = await is_slot_available(
+        data["master_id"],
+        data["scheduled_at"],
+        data["duration_minutes"],
+    )
+
+    if not available:
+        await callback.message.edit_text(
+            "😔 Kechirasiz, bu vaqt band bo'lib qoldi. Boshqa vaqt tanlang."
+        )
+        await state.clear()
+        await callback.answer()
+        return
 
     # Telegram foydalanuvchisini DBdan topamiz
     user = await get_or_create_user(
@@ -442,6 +469,11 @@ async def confirm_booking(
         service_id=data["service_id"],
         scheduled_at=data["scheduled_at"],
     )
+    
+    # --- INTEGRATSIYA: usta xabar olsin va eslatma rejalashtirilsin ---
+    await send_new_booking_notification(master_bot, booking.id)
+    await schedule_booking_reminders(bot, booking.id, booking.scheduled_at)
+    # ------------------------------------------------------------------
 
     await callback.message.edit_text(
         "✅ <b>Bron muvaffaqiyatli yaratildi!</b>\n\n"

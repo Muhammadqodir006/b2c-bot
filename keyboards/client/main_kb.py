@@ -4,6 +4,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 def get_main_menu_kb(language: str = "uz") -> ReplyKeyboardMarkup:
     if language == "uz":
         buttons = [
+            [KeyboardButton(text="📅 Bron qilish")],
             [KeyboardButton(text="📍 Yaqin atrofdagi salonlar")],
             [KeyboardButton(text="🔍 Kategoriyalar")],
             [KeyboardButton(text="📅 Mening bronlarim")],
@@ -11,6 +12,7 @@ def get_main_menu_kb(language: str = "uz") -> ReplyKeyboardMarkup:
         ]
     else:
         buttons = [
+            [KeyboardButton(text="📅 Записаться")],
             [KeyboardButton(text="📍 Салоны рядом")],
             [KeyboardButton(text="🔍 Категории")],
             [KeyboardButton(text="📅 Мои записи")],
