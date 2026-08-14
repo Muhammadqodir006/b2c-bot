@@ -8,6 +8,7 @@ from database.engine import async_session
 from database.models import BookingStatus, Salon, Service
 from database.repositories import booking_repo, user_repo
 from services.time_service import to_local, now_utc
+from scheduler.reminders import cancel_booking_reminders
 
 router = Router(name="client_my_bookings")
 
@@ -156,6 +157,7 @@ async def handle_cancel_booking(
         return
 
     await booking_repo.cancel_booking(booking.id)
+    cancel_booking_reminders(booking.id)
 
     cancelled_label = (
         "❌ <b>Bekor qilindi</b>" if lang == "uz" else "❌ <b>Отменено</b>"
