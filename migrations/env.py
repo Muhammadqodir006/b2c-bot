@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 
 import sys, os
+
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from config import settings

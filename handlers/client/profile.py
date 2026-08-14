@@ -34,7 +34,11 @@ async def show_profile(message: Message):
     change_lang_text = (
         "🌐 Tilni o'zgartirish" if user.language == "uz" else "🌐 Изменить язык"
     )
-    text += f"\n\n{change_lang_text} — pastdagi tugmadan foydalaning" if user.language == "uz" else f"\n\n{change_lang_text} — используйте кнопку ниже"
+    text += (
+        f"\n\n{change_lang_text} — pastdagi tugmadan foydalaning"
+        if user.language == "uz"
+        else f"\n\n{change_lang_text} — используйте кнопку ниже"
+    )
 
     await message.answer(text, reply_markup=get_language_kb())
 

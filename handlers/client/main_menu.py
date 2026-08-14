@@ -48,13 +48,15 @@ async def nearby_salons_request(message: Message):
     )
     await message.answer(text, reply_markup=get_location_request_kb(lang))
 
+
 @router.message(F.location)
 async def nearby_salons_result(message: Message):
     user = await get_user(message.from_user.id)
     lang = user.language if user else "uz"
 
     nearby = await get_nearby_salons(
-        message.location.latitude, message.location.longitude, 
+        message.location.latitude,
+        message.location.longitude,
     )
 
     if not nearby:
@@ -70,7 +72,9 @@ async def nearby_salons_result(message: Message):
     for salon, distance in nearby:
         lines.append(f"🏢 {salon.name} — {distance:.1f} km")
 
-    header = "📍 Yaqin atrofdagi salonlar:\n\n" if lang == "uz" else "📍 Салоны рядом:\n\n"
+    header = (
+        "📍 Yaqin atrofdagi salonlar:\n\n" if lang == "uz" else "📍 Салоны рядом:\n\n"
+    )
     await message.answer(header + "\n".join(lines), reply_markup=get_main_menu_kb(lang))
 
 
@@ -88,7 +92,11 @@ async def show_categories(message: Message):
         categories = list(result.scalars().all())
 
     if not categories:
-        text = "Kategoriyalar hali qo'shilmagan." if lang == "uz" else "Категории пока не добавлены."
+        text = (
+            "Kategoriyalar hali qo'shilmagan."
+            if lang == "uz"
+            else "Категории пока не добавлены."
+        )
         await message.answer(text)
         return
 
@@ -104,7 +112,11 @@ async def category_selected(callback, callback_data: CategoryCallback):
     salons = await get_salons_by_category(callback_data.category_id)
 
     if not salons:
-        text = "Bu kategoriyada salon topilmadi." if lang == "uz" else "В этой категории салонов нет."
+        text = (
+            "Bu kategoriyada salon topilmadi."
+            if lang == "uz"
+            else "В этой категории салонов нет."
+        )
         await callback.message.answer(text)
         await callback.answer()
         return
@@ -113,7 +125,8 @@ async def category_selected(callback, callback_data: CategoryCallback):
     header = "Topilgan salonlar:\n\n" if lang == "uz" else "Найденные салоны:\n\n"
     await callback.message.answer(header + "\n".join(lines))
     await callback.answer()
-    
+
+
 @router.message(F.text.in_(["📅 Bron qilish", "📅 Записаться"]))
 async def start_booking_from_menu(message: Message, state: FSMContext):
     from database.repositories.salon_repo import get_all_salons

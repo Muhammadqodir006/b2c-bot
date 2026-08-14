@@ -98,6 +98,8 @@ async def send_reminder(bot: Bot, booking_id: int, reminder_type: str):
 
     try:
         await bot.send_message(chat_id=booking.user.telegram_id, text=text)
-        logger.info(f"Sent '{reminder_type}' reminder to user {booking.user.telegram_id} for booking {booking_id}")
+        logger.info(
+            f"Sent '{reminder_type}' reminder to user {booking.user.telegram_id} for booking {booking_id}"
+        )
     except Exception as e:
         logger.error(f"Error sending message to user {booking.user.telegram_id}: {e}")

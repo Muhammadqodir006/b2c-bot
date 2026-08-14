@@ -1,9 +1,18 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import (
+    Message,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardRemove,
+)
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from database.repositories.salon_repo import get_master_by_phone, link_master_telegram, update_master_language
+from database.repositories.salon_repo import (
+    get_master_by_phone,
+    link_master_telegram,
+    update_master_language,
+)
 
 router = Router()
 
@@ -23,7 +32,11 @@ def get_language_kb() -> ReplyKeyboardMarkup:
 
 
 def get_phone_kb(language: str = "uz") -> ReplyKeyboardMarkup:
-    text = "📱 Telefon raqamni yuborish" if language == "uz" else "📱 Отправить номер телефона"
+    text = (
+        "📱 Telefon raqamni yuborish"
+        if language == "uz"
+        else "📱 Отправить номер телефона"
+    )
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=text, request_contact=True)]],
         resize_keyboard=True,
@@ -55,7 +68,9 @@ async def cmd_start(message: Message, state: FSMContext):
     )
 
 
-@router.message(MasterOnboardingStates.choosing_language, F.text.in_(["🇺🇿 O'zbekcha", "🇷🇺 Русский"]))
+@router.message(
+    MasterOnboardingStates.choosing_language, F.text.in_(["🇺🇿 O'zbekcha", "🇷🇺 Русский"])
+)
 async def language_chosen(message: Message, state: FSMContext):
     language = "uz" if "O'zbekcha" in message.text else "ru"
     await state.update_data(language=language)
@@ -90,10 +105,14 @@ async def phone_received(message: Message, state: FSMContext):
         return
 
     await link_master_telegram(master.id, message.from_user.id)
-    await update_master_language(master.id, language) 
+    await update_master_language(master.id, language)
     await state.clear()
 
-    text = f"✅ Xush kelibsiz, {master.full_name}!" if language == "uz" else f"✅ Добро пожаловать, {master.full_name}!"
+    text = (
+        f"✅ Xush kelibsiz, {master.full_name}!"
+        if language == "uz"
+        else f"✅ Добро пожаловать, {master.full_name}!"
+    )
     await message.answer(text, reply_markup=get_master_menu_kb(language))
 
 

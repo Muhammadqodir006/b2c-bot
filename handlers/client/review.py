@@ -11,26 +11,33 @@ router = Router(name="client_review")
 
 STAR = "⭐️"
 
+
 class ReviewStates(StatesGroup):
     waiting_comment = State()
+
 
 class ReviewRatingCallback(CallbackData, prefix="review_rate"):
     booking_id: int
     rating: int
 
+
 class ReviewSkipCallback(CallbackData, prefix="review_skip"):
     booking_id: int
     rating: int
+
 
 def _rating_keyboard(booking_id: int):
     builder = InlineKeyboardBuilder()
     for rating in range(1, 6):
         builder.button(
             text=STAR * rating,
-            callback_data=ReviewRatingCallback(booking_id=booking_id, rating=rating).pack(),
+            callback_data=ReviewRatingCallback(
+                booking_id=booking_id, rating=rating
+            ).pack(),
         )
     builder.adjust(1)
     return builder.as_markup()
+
 
 def _comment_keyboard(booking_id: int, rating: int, language: str):
     builder = InlineKeyboardBuilder()
@@ -40,6 +47,7 @@ def _comment_keyboard(booking_id: int, rating: int, language: str):
         callback_data=ReviewSkipCallback(booking_id=booking_id, rating=rating).pack(),
     )
     return builder.as_markup()
+
 
 async def send_review_request(bot: Bot, booking_id: int) -> bool:
     booking = await booking_repo.get_booking(booking_id)
@@ -59,6 +67,7 @@ async def send_review_request(bot: Bot, booking_id: int) -> bool:
         reply_markup=_rating_keyboard(booking_id),
     )
     return True
+
 
 @router.callback_query(ReviewRatingCallback.filter())
 async def handle_rating_selected(
@@ -80,9 +89,12 @@ async def handle_rating_selected(
 
     await callback.message.edit_text(
         text,
-        reply_markup=_comment_keyboard(callback_data.booking_id, callback_data.rating, lang),
+        reply_markup=_comment_keyboard(
+            callback_data.booking_id, callback_data.rating, lang
+        ),
     )
     await callback.answer()
+
 
 @router.message(StateFilter(ReviewStates.waiting_comment))
 async def handle_review_comment(message: Message, state: FSMContext) -> None:
@@ -100,8 +112,13 @@ async def handle_review_comment(message: Message, state: FSMContext) -> None:
     await review_repo.create_review(
         booking_id=booking_id, rating=rating, comment=message.text
     )
-    text = "Rahmat! Sharhingiz uchun tashakkur 🙏" if lang == "uz" else "Спасибо за отзыв! 🙏"
+    text = (
+        "Rahmat! Sharhingiz uchun tashakkur 🙏"
+        if lang == "uz"
+        else "Спасибо за отзыв! 🙏"
+    )
     await message.answer(text)
+
 
 @router.callback_query(ReviewSkipCallback.filter())
 async def handle_review_skip(

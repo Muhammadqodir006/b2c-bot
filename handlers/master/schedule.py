@@ -6,7 +6,10 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
 
 from database.repositories.salon_repo import get_master_by_telegram_id
-from database.repositories.booking_repo import get_master_bookings_today, block_time_slot
+from database.repositories.booking_repo import (
+    get_master_bookings_today,
+    block_time_slot,
+)
 from services.time_service import to_local, to_utc
 
 router = Router()
@@ -32,7 +35,11 @@ def _format_schedule(bookings, language: str) -> str:
         else:
             lines.append(f"🕒 {when} — 🔒 Yopilgan vaqt")
 
-    header = "📅 Bugungi grafik:\n\n" if language == "uz" else "📅 Расписание на сегодня:\n\n"
+    header = (
+        "📅 Bugungi grafik:\n\n"
+        if language == "uz"
+        else "📅 Расписание на сегодня:\n\n"
+    )
     return header + "\n".join(lines)
 
 
@@ -85,8 +92,12 @@ async def handle_block_range(message: Message, state: FSMContext):
         return
 
     today = datetime.now().date()
-    start_local = datetime.combine(today, datetime.min.time()).replace(hour=start_hour, minute=start_min)
-    end_local = datetime.combine(today, datetime.min.time()).replace(hour=end_hour, minute=end_min)
+    start_local = datetime.combine(today, datetime.min.time()).replace(
+        hour=start_hour, minute=start_min
+    )
+    end_local = datetime.combine(today, datetime.min.time()).replace(
+        hour=end_hour, minute=end_min
+    )
 
     if end_local <= start_local:
         text = (
