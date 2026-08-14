@@ -32,8 +32,10 @@ STATUS_LABELS = {
     },
 }
 
+
 class BookingCancelCallback(CallbackData, prefix="bk_cancel"):
     booking_id: int
+
 
 async def _load_salons_and_services(bookings: list) -> tuple[dict, dict]:
     if not bookings:
@@ -44,11 +46,14 @@ async def _load_salons_and_services(bookings: list) -> tuple[dict, dict]:
 
     async with async_session() as session:
         salons_res = await session.execute(select(Salon).where(Salon.id.in_(salon_ids)))
-        services_res = await session.execute(select(Service).where(Service.id.in_(service_ids)))
+        services_res = await session.execute(
+            select(Service).where(Service.id.in_(service_ids))
+        )
         salons = {s.id: s for s in salons_res.scalars().all()}
         services = {s.id: s for s in services_res.scalars().all()}
 
     return salons, services
+
 
 def _format_booking(booking, salons: dict, services: dict, language: str) -> str:
     salon = salons.get(booking.salon_id)
@@ -59,12 +64,8 @@ def _format_booking(booking, salons: dict, services: dict, language: str) -> str
     when = to_local(booking.scheduled_at).strftime("%d.%m.%Y %H:%M")
     status_label = STATUS_LABELS[language].get(booking.status, booking.status.value)
 
-    return (
-        f"🏢 <b>{salon_name}</b>\n"
-        f"💈 {service_name}\n"
-        f"🕒 {when}\n"
-        f"📌 {status_label}"
-    )
+    return f"🏢 <b>{salon_name}</b>\n💈 {service_name}\n🕒 {when}\n📌 {status_label}"
+
 
 def _cancel_keyboard(booking_id: int, language: str):
     builder = InlineKeyboardBuilder()
@@ -74,6 +75,7 @@ def _cancel_keyboard(booking_id: int, language: str):
         callback_data=BookingCancelCallback(booking_id=booking_id).pack(),
     )
     return builder.as_markup()
+
 
 @router.message(F.text.in_(["📅 Mening bronlarim", "📅 Мои записи"]))
 async def show_my_bookings(message: Message) -> None:
@@ -86,7 +88,11 @@ async def show_my_bookings(message: Message) -> None:
 
     bookings = await booking_repo.get_user_bookings(user.id)
     if not bookings:
-        text = "Sizda hali bronlar mavjud emas." if lang == "uz" else "У вас пока нет записей."
+        text = (
+            "Sizda hali bronlar mavjud emas."
+            if lang == "uz"
+            else "У вас пока нет записей."
+        )
         await message.answer(text)
         return
 
@@ -96,7 +102,11 @@ async def show_my_bookings(message: Message) -> None:
     salons, services = await _load_salons_and_services(bookings)
 
     if active:
-        title = "📅 <b>Faol bronlaringiz</b>" if lang == "uz" else "📅 <b>Ваши активные записи</b>"
+        title = (
+            "📅 <b>Faol bronlaringiz</b>"
+            if lang == "uz"
+            else "📅 <b>Ваши активные записи</b>"
+        )
         await message.answer(title)
         for booking in active:
             await message.answer(
@@ -105,10 +115,13 @@ async def show_my_bookings(message: Message) -> None:
             )
 
     if past:
-        title = "🗂 <b>O'tgan bronlar</b>" if lang == "uz" else "🗂 <b>Прошедшие записи</b>"
+        title = (
+            "🗂 <b>O'tgan bronlar</b>" if lang == "uz" else "🗂 <b>Прошедшие записи</b>"
+        )
         await message.answer(title)
         for booking in past:
             await message.answer(_format_booking(booking, salons, services, lang))
+
 
 @router.callback_query(BookingCancelCallback.filter())
 async def handle_cancel_booking(
@@ -125,7 +138,11 @@ async def handle_cancel_booking(
         return
 
     if booking.status not in ACTIVE_STATUSES:
-        text = "Bu bronni bekor qilib bo'lmaydi." if lang == "uz" else "Эту запись нельзя отменить."
+        text = (
+            "Bu bronni bekor qilib bo'lmaydi."
+            if lang == "uz"
+            else "Эту запись нельзя отменить."
+        )
         await callback.answer(text, show_alert=True)
         return
 
@@ -142,7 +159,9 @@ async def handle_cancel_booking(
     await booking_repo.cancel_booking(booking.id)
     cancel_booking_reminders(booking.id)
 
-    cancelled_label = "❌ <b>Bekor qilindi</b>" if lang == "uz" else "❌ <b>Отменено</b>"
+    cancelled_label = (
+        "❌ <b>Bekor qilindi</b>" if lang == "uz" else "❌ <b>Отменено</b>"
+    )
     if callback.message.text or callback.message.html_text:
         base_text = callback.message.html_text or callback.message.text
         await callback.message.edit_text(f"{base_text}\n\n{cancelled_label}")

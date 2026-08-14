@@ -32,14 +32,13 @@ router = Router()
 # 1. BRONNI BOSHLASH
 # ============================================================
 
+
 @router.callback_query(F.data == "booking_start")
 async def start_booking(callback: CallbackQuery, state: FSMContext):
     salons = await salon_repo.get_all_salons()
 
     if not salons:
-        await callback.message.edit_text(
-            "Hozircha salonlar mavjud emas."
-        )
+        await callback.message.edit_text("Hozircha salonlar mavjud emas.")
         await callback.answer()
         return
 
@@ -58,9 +57,9 @@ async def start_booking(callback: CallbackQuery, state: FSMContext):
 # 2. SALON TANLASH
 # ============================================================
 
+
 @router.callback_query(
-    BookingStates.choosing_salon,
-    F.data.startswith("booking_salon:")
+    BookingStates.choosing_salon, F.data.startswith("booking_salon:")
 )
 async def choose_salon(callback: CallbackQuery, state: FSMContext):
     salon_id = int(callback.data.split(":")[1])
@@ -91,8 +90,7 @@ async def choose_salon(callback: CallbackQuery, state: FSMContext):
     await state.set_state(BookingStates.choosing_service)
 
     await callback.message.edit_text(
-        f"🏢 {salon.name}\n\n"
-        "💈 Xizmatni tanlang:",
+        f"🏢 {salon.name}\n\n💈 Xizmatni tanlang:",
         reply_markup=services_keyboard(services),
     )
 
@@ -103,9 +101,9 @@ async def choose_salon(callback: CallbackQuery, state: FSMContext):
 # 3. XIZMAT TANLASH
 # ============================================================
 
+
 @router.callback_query(
-    BookingStates.choosing_service,
-    F.data.startswith("booking_service:")
+    BookingStates.choosing_service, F.data.startswith("booking_service:")
 )
 async def choose_service(callback: CallbackQuery, state: FSMContext):
     service_id = int(callback.data.split(":")[1])
@@ -160,9 +158,9 @@ async def choose_service(callback: CallbackQuery, state: FSMContext):
 # 4. USTA TANLASH
 # ============================================================
 
+
 @router.callback_query(
-    BookingStates.choosing_master,
-    F.data.startswith("booking_master:")
+    BookingStates.choosing_master, F.data.startswith("booking_master:")
 )
 async def choose_master(callback: CallbackQuery, state: FSMContext):
     master_value = callback.data.split(":")[1]
@@ -219,6 +217,7 @@ async def choose_master(callback: CallbackQuery, state: FSMContext):
 # BO'SH VAQTLARNI TOPISH
 # ============================================================
 
+
 async def show_available_times(
     callback: CallbackQuery,
     state: FSMContext,
@@ -251,7 +250,6 @@ async def show_available_times(
     current_local = work_start_local
 
     while current_local + timedelta(minutes=duration) <= work_end_local:
-
         # O'tib ketgan vaqtlarni ko'rsatmaymiz (Toshkent vaqti bo'yicha solishtirish)
         if current_local <= now_local:
             current_local += timedelta(minutes=30)
@@ -263,7 +261,6 @@ async def show_available_times(
 
         # Agar foydalanuvchi aniq usta tanlagan bo'lsa
         if selected_master_id is not None:
-
             bookings = await booking_repo.get_master_bookings_for_slot(
                 selected_master_id,
                 current_utc,
@@ -271,26 +268,19 @@ async def show_available_times(
             )
 
             if not bookings:
-                available_times.append(
-                    current_local.strftime("%H:%M")
-                )
+                available_times.append(current_local.strftime("%H:%M"))
 
         # "Farqi yo'q" bo'lsa
         else:
-
             for master in masters:
-                bookings = (
-                    await booking_repo.get_master_bookings_for_slot(
-                        master.id,
-                        current_utc,
-                        slot_end_utc,
-                    )
+                bookings = await booking_repo.get_master_bookings_for_slot(
+                    master.id,
+                    current_utc,
+                    slot_end_utc,
                 )
 
                 if not bookings:
-                    available_times.append(
-                        current_local.strftime("%H:%M")
-                    )
+                    available_times.append(current_local.strftime("%H:%M"))
                     break
 
         current_local += timedelta(minutes=30)
@@ -312,10 +302,8 @@ async def show_available_times(
 # 5. VAQT TANLASH
 # ============================================================
 
-@router.callback_query(
-    BookingStates.choosing_time,
-    F.data.startswith("booking_time:")
-)
+
+@router.callback_query(BookingStates.choosing_time, F.data.startswith("booking_time:"))
 async def choose_time(callback: CallbackQuery, state: FSMContext):
     selected_time = callback.data.split(":", 1)[1]
 
@@ -352,16 +340,13 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
     # Agar "Farqi yo'q" tanlangan bo'lsa,
     # shu vaqt uchun bo'sh ustani topamiz.
     if selected_master_id is None:
-
         selected_master = None
 
         for master in masters:
-            bookings = (
-                await booking_repo.get_master_bookings_for_slot(
-                    master.id,
-                    scheduled_at_utc,
-                    slot_end_utc,
-                )
+            bookings = await booking_repo.get_master_bookings_for_slot(
+                master.id,
+                scheduled_at_utc,
+                slot_end_utc,
             )
 
             if not bookings:
@@ -381,7 +366,6 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
         )
 
     else:
-
         bookings = await booking_repo.get_master_bookings_for_slot(
             selected_master_id,
             scheduled_at_utc,
@@ -397,7 +381,7 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(
         scheduled_at=scheduled_at_utc,  # UTC — bazaga shu holda yoziladi
-        scheduled_time=selected_time,    # faqat ko'rsatish uchun (local matn)
+        scheduled_time=selected_time,  # faqat ko'rsatish uchun (local matn)
     )
 
     await state.set_state(BookingStates.confirming)
@@ -423,10 +407,8 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
 # 6. TASDIQLASH
 # ============================================================
 
-@router.callback_query(
-    BookingStates.confirming,
-    F.data == "booking_confirm"
-)
+
+@router.callback_query(BookingStates.confirming, F.data == "booking_confirm")
 async def confirm_booking(
     callback: CallbackQuery,
     state: FSMContext,
@@ -469,7 +451,7 @@ async def confirm_booking(
         service_id=data["service_id"],
         scheduled_at=data["scheduled_at"],
     )
-    
+
     # --- INTEGRATSIYA: usta xabar olsin va eslatma rejalashtirilsin ---
     await send_new_booking_notification(master_bot, booking.id)
     await schedule_booking_reminders(bot, booking.id, booking.scheduled_at)
@@ -493,10 +475,8 @@ async def confirm_booking(
 # 7. ORQAGA
 # ============================================================
 
-@router.callback_query(
-    BookingStates.choosing_service,
-    F.data == "booking_back"
-)
+
+@router.callback_query(BookingStates.choosing_service, F.data == "booking_back")
 async def back_to_salon(
     callback: CallbackQuery,
     state: FSMContext,
@@ -513,19 +493,14 @@ async def back_to_salon(
     await callback.answer()
 
 
-@router.callback_query(
-    BookingStates.choosing_master,
-    F.data == "booking_back"
-)
+@router.callback_query(BookingStates.choosing_master, F.data == "booking_back")
 async def back_to_service(
     callback: CallbackQuery,
     state: FSMContext,
 ):
     data = await state.get_data()
 
-    services = await salon_repo.get_services_by_salon(
-        data["salon_id"]
-    )
+    services = await salon_repo.get_services_by_salon(data["salon_id"])
 
     await state.set_state(BookingStates.choosing_service)
 
@@ -537,19 +512,14 @@ async def back_to_service(
     await callback.answer()
 
 
-@router.callback_query(
-    BookingStates.choosing_time,
-    F.data == "booking_back"
-)
+@router.callback_query(BookingStates.choosing_time, F.data == "booking_back")
 async def back_to_master(
     callback: CallbackQuery,
     state: FSMContext,
 ):
     data = await state.get_data()
 
-    masters = await salon_repo.get_masters_by_salon(
-        data["salon_id"]
-    )
+    masters = await salon_repo.get_masters_by_salon(data["salon_id"])
 
     await state.set_state(BookingStates.choosing_master)
 
@@ -561,19 +531,14 @@ async def back_to_master(
     await callback.answer()
 
 
-@router.callback_query(
-    BookingStates.confirming,
-    F.data == "booking_back"
-)
+@router.callback_query(BookingStates.confirming, F.data == "booking_back")
 async def back_to_time(
     callback: CallbackQuery,
     state: FSMContext,
 ):
     data = await state.get_data()
 
-    masters = await salon_repo.get_masters_by_salon(
-        data["salon_id"]
-    )
+    masters = await salon_repo.get_masters_by_salon(data["salon_id"])
 
     await state.set_state(BookingStates.choosing_time)
 
@@ -590,18 +555,14 @@ async def back_to_time(
 # 8. UNIVERSAL BACK
 # ============================================================
 
-@router.callback_query(
-    BookingStates.choosing_salon,
-    F.data == "booking_back"
-)
+
+@router.callback_query(BookingStates.choosing_salon, F.data == "booking_back")
 async def back_from_salon(
     callback: CallbackQuery,
     state: FSMContext,
 ):
     await state.clear()
 
-    await callback.message.edit_text(
-        "❌ Bron qilish bekor qilindi."
-    )
+    await callback.message.edit_text("❌ Bron qilish bekor qilindi.")
 
     await callback.answer()

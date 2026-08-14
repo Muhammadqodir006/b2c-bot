@@ -68,7 +68,13 @@ async def get_master_bookings_for_slot(
             select(Booking).where(
                 and_(
                     Booking.master_id == master_id,
-                    Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed, BookingStatus.blocked]),
+                    Booking.status.in_(
+                        [
+                            BookingStatus.pending,
+                            BookingStatus.confirmed,
+                            BookingStatus.blocked,
+                        ]
+                    ),
                     Booking.scheduled_at < end_time,
                     Booking.scheduled_at >= start_time - timedelta(hours=2),
                 )
@@ -78,17 +84,19 @@ async def get_master_bookings_for_slot(
 
         # Python darajasida aniq kesishish (overlap) tekshiruvi
         overlapping = [
-            b for b in candidates
-            if b.scheduled_at < end_time and (b.scheduled_at + timedelta(hours=1)) > start_time
+            b
+            for b in candidates
+            if b.scheduled_at < end_time
+            and (b.scheduled_at + timedelta(hours=1)) > start_time
         ]
         return overlapping
 
 
-async def update_booking_status(booking_id: int, status: BookingStatus) -> Booking | None:
+async def update_booking_status(
+    booking_id: int, status: BookingStatus
+) -> Booking | None:
     async with async_session() as session:
-        result = await session.execute(
-            select(Booking).where(Booking.id == booking_id)
-        )
+        result = await session.execute(select(Booking).where(Booking.id == booking_id))
         booking = result.scalar_one_or_none()
 
         if booking is None:
@@ -122,7 +130,8 @@ async def get_bookings_for_reminder(
             )
         )
         return list(result.scalars().all())
-    
+
+
 async def get_master_bookings_today(master_id: int) -> list[Booking]:
     from services.time_service import now_utc
 
@@ -137,13 +146,20 @@ async def get_master_bookings_today(master_id: int) -> list[Booking]:
                     Booking.master_id == master_id,
                     Booking.scheduled_at >= today_start,
                     Booking.scheduled_at <= today_end,
-                    Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed, BookingStatus.blocked]),
+                    Booking.status.in_(
+                        [
+                            BookingStatus.pending,
+                            BookingStatus.confirmed,
+                            BookingStatus.blocked,
+                        ]
+                    ),
                 )
             )
             .order_by(Booking.scheduled_at)
         )
         return list(result.scalars().all())
-    
+
+
 async def block_time_slot(
     master_id: int,
     salon_id: int,

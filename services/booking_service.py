@@ -47,7 +47,10 @@ async def get_available_slots(
 
     return available_slots
 
-async def is_slot_available(master_id: int, start_time: datetime, duration_minutes: int) -> bool:
+
+async def is_slot_available(
+    master_id: int, start_time: datetime, duration_minutes: int
+) -> bool:
     """Berilgan vaqt band emasligini tekshiradi — tasdiqlashdan oldin oxirgi tekshiruv uchun."""
     end_time = start_time + timedelta(minutes=duration_minutes)
     bookings = await get_master_bookings_for_slot(master_id, start_time, end_time)

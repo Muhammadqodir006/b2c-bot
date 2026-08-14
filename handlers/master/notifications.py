@@ -27,15 +27,11 @@ def _notification_keyboard(booking_id: int):
 
     builder.button(
         text="✅ Mijoz keldi",
-        callback_data=BookingArrivedCallback(
-            booking_id=booking_id
-        ).pack(),
+        callback_data=BookingArrivedCallback(booking_id=booking_id).pack(),
     )
     builder.button(
         text="❌ Kelmadi",
-        callback_data=BookingNoShowCallback(
-            booking_id=booking_id
-        ).pack(),
+        callback_data=BookingNoShowCallback(booking_id=booking_id).pack(),
     )
 
     builder.adjust(2)
@@ -48,11 +44,7 @@ async def send_new_booking_notification(
 ) -> bool:
     booking = await get_booking(booking_id)
 
-    if (
-        booking is None
-        or booking.master is None
-        or booking.master.telegram_id is None
-    ):
+    if booking is None or booking.master is None or booking.master.telegram_id is None:
         return False
 
     master = booking.master
@@ -70,9 +62,7 @@ async def send_new_booking_notification(
         )
     else:
         text = (
-            "⚡️ YANGI BRON!\n"
-            f"👤 Mijoz: {client_name} ({client_phone})\n"
-            f"🕒 Vaqt: {when}"
+            f"⚡️ YANGI BRON!\n👤 Mijoz: {client_name} ({client_phone})\n🕒 Vaqt: {when}"
         )
 
     await bot.send_message(
@@ -86,10 +76,12 @@ async def send_new_booking_notification(
 
 @router.callback_query(BookingArrivedCallback.filter())
 async def handle_arrived(
-    callback: CallbackQuery,
-    callback_data: BookingArrivedCallback,
-    bot: Bot
+    callback: CallbackQuery, callback_data: BookingArrivedCallback, bot: Bot
 ):
+    booking = await update_booking_status(
+        callback_data.booking_id,
+        BookingStatus.completed,
+    )
     await update_booking_status(callback_data.booking_id, BookingStatus.completed)
     booking = await get_booking(callback_data.booking_id)
 
@@ -106,7 +98,7 @@ async def handle_arrived(
 
     await callback.message.edit_text(text)
     await callback.answer()
-    
+
     await send_review_request(client_bot, callback_data.booking_id)
 
 
@@ -115,6 +107,10 @@ async def handle_no_show(
     callback: CallbackQuery,
     callback_data: BookingNoShowCallback,
 ):
+    booking = await update_booking_status(
+        callback_data.booking_id,
+        BookingStatus.no_show,
+    )
     await update_booking_status(callback_data.booking_id, BookingStatus.no_show)
     booking = await get_booking(callback_data.booking_id)
 
