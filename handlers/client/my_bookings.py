@@ -1,5 +1,6 @@
 from datetime import timedelta
 from aiogram import F, Router
+from aiogram import Bot
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -9,6 +10,10 @@ from database.models import BookingStatus, Salon, Service
 from database.repositories import booking_repo, user_repo
 from services.time_service import to_local, now_utc
 from scheduler.reminders import cancel_booking_reminders
+from config import settings 
+from handlers.master.notifications import send_booking_cancelled_notification
+
+master_bot = Bot(token=settings.master_bot_token)
 
 router = Router(name="client_my_bookings")
 
@@ -158,6 +163,7 @@ async def handle_cancel_booking(
 
     await booking_repo.cancel_booking(booking.id)
     cancel_booking_reminders(booking.id)
+    await send_booking_cancelled_notification(master_bot, booking.id)
 
     cancelled_label = (
         "❌ <b>Bekor qilindi</b>" if lang == "uz" else "❌ <b>Отменено</b>"

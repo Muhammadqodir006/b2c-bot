@@ -127,3 +127,35 @@ async def handle_no_show(
 
     await callback.message.edit_text(text)
     await callback.answer()
+
+async def send_booking_cancelled_notification(bot: Bot, booking_id: int) -> bool:
+    booking = await get_booking(booking_id)
+
+    if (
+        booking is None
+        or booking.master is None
+        or booking.master.telegram_id is None
+    ):
+        return False
+
+    master = booking.master
+    language = master.language
+
+    when = to_local(booking.scheduled_at).strftime("%d.%m.%Y %H:%M")
+    client_name = booking.user.full_name if booking.user else "—"
+
+    if language == "ru":
+        text = (
+            "❌ ЗАПИСЬ ОТМЕНЕНА\n"
+            f"👤 Клиент: {client_name}\n"
+            f"🕒 Время: {when}"
+        )
+    else:
+        text = (
+            "❌ BRON BEKOR QILINDI\n"
+            f"👤 Mijoz: {client_name}\n"
+            f"🕒 Vaqt: {when}"
+        )
+
+    await bot.send_message(chat_id=master.telegram_id, text=text)
+    return True
