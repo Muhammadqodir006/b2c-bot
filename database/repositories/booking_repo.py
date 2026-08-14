@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from database.engine import async_session
@@ -63,17 +63,25 @@ async def get_master_bookings_for_slot(
 ) -> list[Booking]:
     """Master'ning berilgan vaqt oralig'idagi bandliklari — bo'sh vaqt hisoblash uchun."""
     async with async_session() as session:
+        # Xavfsiz chegara bilan kengroq oraliqni bazadan olamiz
         result = await session.execute(
             select(Booking).where(
                 and_(
                     Booking.master_id == master_id,
-                    Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed, BookingStatus.blocked,]),
-                    Booking.scheduled_at >= start_time,
+                    Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed, BookingStatus.blocked]),
                     Booking.scheduled_at < end_time,
+                    Booking.scheduled_at >= start_time - timedelta(hours=2),
                 )
             )
         )
-        return list(result.scalars().all())
+        candidates = list(result.scalars().all())
+
+        # Python darajasida aniq kesishish (overlap) tekshiruvi
+        overlapping = [
+            b for b in candidates
+            if b.scheduled_at < end_time and (b.scheduled_at + timedelta(hours=1)) > start_time
+        ]
+        return overlapping
 
 
 async def update_booking_status(booking_id: int, status: BookingStatus) -> Booking | None:
@@ -116,10 +124,11 @@ async def get_bookings_for_reminder(
         return list(result.scalars().all())
     
 async def get_master_bookings_today(master_id: int) -> list[Booking]:
-    async with async_session() as session:
-        today_start = datetime.combine(datetime.now().date(), time.min)
-        today_end = datetime.combine(datetime.now().date(), time.max)
+    from services.time_service import now_utc
 
+    async with async_session() as session:
+        today_start = datetime.combine(now_utc().date(), time.min)
+        today_end = datetime.combine(now_utc().date(), time.max)
         result = await session.execute(
             select(Booking)
             .options(selectinload(Booking.user))
@@ -128,7 +137,7 @@ async def get_master_bookings_today(master_id: int) -> list[Booking]:
                     Booking.master_id == master_id,
                     Booking.scheduled_at >= today_start,
                     Booking.scheduled_at <= today_end,
-                    Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+                    Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed, BookingStatus.blocked]),
                 )
             )
             .order_by(Booking.scheduled_at)
