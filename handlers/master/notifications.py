@@ -5,6 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import settings
 from database.models import BookingStatus
 from database.repositories.booking_repo import get_booking, update_booking_status
+from database.repositories.user_repo import adjust_trust_score
 from services.time_service import to_local
 from handlers.client.review import send_review_request
 
@@ -88,6 +89,9 @@ async def handle_arrived(
     if booking is None:
         await callback.answer("Bron topilmadi.", show_alert=True)
         return
+    
+    if booking.user is not None:
+        await adjust_trust_score(booking.user.telegram_id, +5)
 
     language = booking.master.language if booking.master else "uz"
 
@@ -117,6 +121,9 @@ async def handle_no_show(
     if booking is None:
         await callback.answer("Bron topilmadi.", show_alert=True)
         return
+    
+    if booking.user is not None:
+        await adjust_trust_score(booking.user.telegram_id, -10)
 
     language = booking.master.language if booking.master else "uz"
 
