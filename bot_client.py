@@ -10,6 +10,7 @@ from handlers.client import (
     my_bookings,
     review,
     booking_flow,
+    arrival_status
 )
 from scheduler.reminders import start_scheduler
 
@@ -28,6 +29,7 @@ async def main():
     dp.include_router(review.router)
     dp.include_router(main_menu.router)
     dp.include_router(booking_flow.router)
+    dp.include_router(arrival_status.router)
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)

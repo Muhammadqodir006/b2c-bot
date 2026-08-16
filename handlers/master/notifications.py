@@ -124,6 +124,13 @@ async def handle_no_show(
     
     if booking.user is not None:
         await adjust_trust_score(booking.user.telegram_id, -10)
+        client_lang = booking.user.language
+        when = to_local(booking.scheduled_at).strftime("%d.%m.%Y %H:%M")
+        if client_lang == "ru":
+            client_text = f"❌ Вы не пришли на запись {when}. Это может повлиять на ваш рейтинг доверия."
+        else:
+            client_text = f"❌ Siz {when} dagi bronga kelmadingiz. Bu ishonchlilik ballingizga ta'sir qilishi mumkin."
+        await client_bot.send_message(chat_id=booking.user.telegram_id, text=client_text)
 
     language = booking.master.language if booking.master else "uz"
 

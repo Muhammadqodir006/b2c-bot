@@ -3,7 +3,7 @@ from datetime import timedelta
 from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.date import DateTrigger
-
+from keyboards.client.arrival_kb import arrival_keyboard
 from database.repositories.booking_repo import get_booking
 from services.time_service import now_utc, to_local
 
@@ -60,9 +60,7 @@ def cancel_booking_reminders(booking_id: int):
             scheduler.remove_job(job_id)
             logger.info(f"Canceled job {job_id}")
 
-
 async def send_reminder(bot: Bot, booking_id: int, reminder_type: str):
-    """Foydalanuvchiga Telegram orqali eslatma xabarini yuboradi."""
     booking = await get_booking(booking_id)
     if booking is None or booking.user is None:
         logger.warning(f"Booking or user not found for booking_id={booking_id}")
@@ -70,6 +68,7 @@ async def send_reminder(bot: Bot, booking_id: int, reminder_type: str):
 
     lang = getattr(booking.user, "language", "uz")
     when = to_local(booking.scheduled_at).strftime("%H:%M")
+    reply_markup = None
 
     if reminder_type == "2h":
         text = (
@@ -83,6 +82,7 @@ async def send_reminder(bot: Bot, booking_id: int, reminder_type: str):
             if lang == "uz"
             else "⏰ Через 15 минут начинается ваша запись!"
         )
+        reply_markup = arrival_keyboard(booking_id, lang)
     elif reminder_type == "review":
         text = (
             "🌟 Xizmatimizdan foydalanganingiz uchun rahmat! Iltimos, sharh qoldiring."
@@ -97,9 +97,7 @@ async def send_reminder(bot: Bot, booking_id: int, reminder_type: str):
         )
 
     try:
-        await bot.send_message(chat_id=booking.user.telegram_id, text=text)
-        logger.info(
-            f"Sent '{reminder_type}' reminder to user {booking.user.telegram_id} for booking {booking_id}"
-        )
+        await bot.send_message(chat_id=booking.user.telegram_id, text=text, reply_markup=reply_markup)
+        logger.info(f"Sent '{reminder_type}' reminder to user {booking.user.telegram_id} for booking {booking_id}")
     except Exception as e:
         logger.error(f"Error sending message to user {booking.user.telegram_id}: {e}")
