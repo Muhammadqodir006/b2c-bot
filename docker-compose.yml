@@ -1,19 +1,91 @@
-services:
+﻿services:
+
   postgres:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: salon-postgres
     restart: unless-stopped
-
     environment:
-      POSTGRES_USER: salon_user
-      POSTGRES_PASSWORD: 12345678
-      POSTGRES_DB: salon_db
-
-    ports:
-      - "5432:5432"
-
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: salon-migrate
+    command: alembic upgrade head
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  bot-client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: salon-bot-client
+    command: python bot_client.py
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  bot-master:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: salon-bot-master
+    command: python bot_master.py
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  bot-support:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: salon-bot-support
+    command: python support_bot/bot.py
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:
