@@ -55,3 +55,19 @@ async def update_language(telegram_id: int, language: str) -> User | None:
         await session.commit()
         await session.refresh(user)
         return user
+
+async def adjust_trust_score(telegram_id: int, delta: int) -> User | None:
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).where(User.telegram_id == telegram_id)
+        )
+        user = result.scalar_one_or_none()
+        if user is None:
+            return None
+
+        new_score = user.trust_score + delta
+        user.trust_score = max(0, min(100, new_score))  # 0-100 oralig'ida ushlab turadi
+
+        await session.commit()
+        await session.refresh(user)
+        return user

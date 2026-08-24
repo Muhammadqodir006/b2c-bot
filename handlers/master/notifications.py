@@ -5,6 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import settings
 from database.models import BookingStatus
 from database.repositories.booking_repo import get_booking, update_booking_status
+from database.repositories.user_repo import adjust_trust_score
 from services.time_service import to_local
 from handlers.client.review import send_review_request
 
@@ -88,6 +89,9 @@ async def handle_arrived(
     if booking is None:
         await callback.answer("Bron topilmadi.", show_alert=True)
         return
+    
+    if booking.user is not None:
+        await adjust_trust_score(booking.user.telegram_id, +5)
 
     language = booking.master.language if booking.master else "uz"
 
@@ -117,6 +121,16 @@ async def handle_no_show(
     if booking is None:
         await callback.answer("Bron topilmadi.", show_alert=True)
         return
+    
+    if booking.user is not None:
+        await adjust_trust_score(booking.user.telegram_id, -10)
+        client_lang = booking.user.language
+        when = to_local(booking.scheduled_at).strftime("%d.%m.%Y %H:%M")
+        if client_lang == "ru":
+            client_text = f"❌ Вы не пришли на запись {when}. Это может повлиять на ваш рейтинг доверия."
+        else:
+            client_text = f"❌ Siz {when} dagi bronga kelmadingiz. Bu ishonchlilik ballingizga ta'sir qilishi mumkin."
+        await client_bot.send_message(chat_id=booking.user.telegram_id, text=client_text)
 
     language = booking.master.language if booking.master else "uz"
 
@@ -127,3 +141,35 @@ async def handle_no_show(
 
     await callback.message.edit_text(text)
     await callback.answer()
+
+async def send_booking_cancelled_notification(bot: Bot, booking_id: int) -> bool:
+    booking = await get_booking(booking_id)
+
+    if (
+        booking is None
+        or booking.master is None
+        or booking.master.telegram_id is None
+    ):
+        return False
+
+    master = booking.master
+    language = master.language
+
+    when = to_local(booking.scheduled_at).strftime("%d.%m.%Y %H:%M")
+    client_name = booking.user.full_name if booking.user else "—"
+
+    if language == "ru":
+        text = (
+            "❌ ЗАПИСЬ ОТМЕНЕНА\n"
+            f"👤 Клиент: {client_name}\n"
+            f"🕒 Время: {when}"
+        )
+    else:
+        text = (
+            "❌ BRON BEKOR QILINDI\n"
+            f"👤 Mijoz: {client_name}\n"
+            f"🕒 Vaqt: {when}"
+        )
+
+    await bot.send_message(chat_id=master.telegram_id, text=text)
+    return True
