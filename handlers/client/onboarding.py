@@ -14,6 +14,7 @@ from database.repositories.user_repo import (
     update_language,
 )
 from keyboards.client.main_kb import get_main_menu_kb
+from services.referral_service import get_user_by_referral_code, create_referral
 
 router = Router()
 
@@ -46,7 +47,26 @@ def get_phone_kb(language: str = "uz") -> ReplyKeyboardMarkup:
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
+    args = message.text.split(maxsplit=1)
+
+    if len(args) > 1:
+        referral_code = args[1].strip()
+
+        referrer = await get_user_by_referral_code(referral_code)
+
+        if referrer and referrer.telegram_id != message.from_user.id:
+            referred_user = await get_or_create_user(
+                telegram_id=message.from_user.id,
+                full_name=message.from_user.full_name,
+            )
+
+            await create_referral(
+                referrer_id=referrer.id,
+                referred_id=referred_user.id,
+            )
+
     await state.set_state(OnboardingStates.choosing_language)
+
     await message.answer(
         "Tilni tanlang / Выберите язык:",
         reply_markup=get_language_kb(),
