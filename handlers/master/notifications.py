@@ -3,11 +3,13 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import settings
-from database.models import BookingStatus
-from database.repositories.booking_repo import get_booking, update_booking_status
+from database.models import BookingStatus, Booking
+from database.repositories.booking_repo import get_booking, update_booking_status, async_session
 from database.repositories.user_repo import adjust_trust_score
 from services.time_service import to_local
 from handlers.client.review import send_review_request
+from services.points_service import add_points, check_and_award_badges
+from sqlalchemy import select, func
 
 client_bot = Bot(token=settings.client_bot_token)
 
@@ -92,6 +94,24 @@ async def handle_arrived(
     
     if booking.user is not None:
         await adjust_trust_score(booking.user.telegram_id, +5)
+        await add_points(booking.user.id, 10, "completed_booking")
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(func.count(Booking.id)).where(
+                    Booking.user_id == booking.user.id,
+                    Booking.status == BookingStatus.completed,
+                )
+            )
+            total_completed = result.scalar()
+
+        earned_badges = await check_and_award_badges(booking.user.id, total_completed)
+        if earned_badges:
+            badge_text = ", ".join(earned_badges)
+            await client_bot.send_message(
+                chat_id=booking.user.telegram_id,
+                text=f"🎖 Tabriklaymiz! Yangi belgi oldingiz: {badge_text}"
+            )
 
     language = booking.master.language if booking.master else "uz"
 
