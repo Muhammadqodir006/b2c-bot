@@ -71,3 +71,12 @@ async def adjust_trust_score(telegram_id: int, delta: int) -> User | None:
         await session.commit()
         await session.refresh(user)
         return user
+
+async def get_all_user_points() -> list[tuple[int, int]]:
+    """Returns a list of tuples (user_id, total_points) for all users."""
+    from database.models import UserPoints
+    async with async_session() as session:
+        result = await session.execute(
+            select(UserPoints.user_id, UserPoints.total_points)
+        )
+        return result.all()

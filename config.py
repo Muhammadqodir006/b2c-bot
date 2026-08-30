@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     support_bot_token: str
     admin_ids: str
 
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+
     class Config:
         env_file = ".env"
 
@@ -26,6 +29,10 @@ class Settings(BaseSettings):
             f"postgresql+asyncpg://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
+
+    @property
+    def redis_url(self) -> str:
+        return f"redis://{self.redis_host}:{self.redis_port}/0"
 
 
 settings = Settings()
