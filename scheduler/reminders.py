@@ -12,11 +12,48 @@ logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone="UTC")
 
 
+from apscheduler.triggers.interval import IntervalTrigger
+
 def start_scheduler():
     """Starts the AsyncIO Scheduler if it is not already running."""
     if not scheduler.running:
+        scheduler.add_job(
+            sync_redis_leaderboard,
+            IntervalTrigger(hours=1),
+            id="sync_redis_leaderboard",
+            replace_existing=True,
+        )
         scheduler.start()
         logger.info("Scheduler started successfully.")
+
+async def sync_redis_leaderboard():
+    """Syncs PostgreSQL UserPoints to Redis leaderboard."""
+    from database.repositories.user_repo import get_all_user_points
+    from services.rating_service import rating_service
+
+    try:
+        pg_points = await get_all_user_points()
+        pg_dict = {str(row.user_id): row.total_points for row in pg_points}
+
+        # Fetch current redis leaderboard
+        redis_data = await rating_service.redis_client.zrange(
+            rating_service.leaderboard_key, 0, -1, withscores=True
+        )
+        redis_dict = {str(k): v for k, v in redis_data}
+
+        # Update or add from postgres to redis
+        to_add = {k: v for k, v in pg_dict.items() if redis_dict.get(k) != v}
+        if to_add:
+            await rating_service.redis_client.zadd(rating_service.leaderboard_key, to_add)
+
+        # Remove keys in redis that are not in postgres
+        to_remove = [k for k in redis_dict if k not in pg_dict]
+        if to_remove:
+            await rating_service.redis_client.zrem(rating_service.leaderboard_key, *to_remove)
+
+        logger.info(f"Leaderboard synced. Updated/Added: {len(to_add)}, Removed: {len(to_remove)}")
+    except Exception as e:
+        logger.error(f"Error syncing leaderboard: {e}")
 
 
 async def schedule_booking_reminders(bot: Bot, booking_id: int, scheduled_at):

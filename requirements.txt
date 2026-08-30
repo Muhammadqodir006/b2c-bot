@@ -16,6 +16,7 @@ magic-filter==1.0.12
 multidict==6.7.1
 propcache==0.5.2
 pydantic==2.13.4
+redis==5.2.0
 pydantic-settings==2.10.1
 pydantic_core==2.46.4
 SQLAlchemy==2.0.51

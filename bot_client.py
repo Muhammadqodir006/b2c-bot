@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 from config import settings
 from handlers.client import (
     onboarding,
@@ -21,7 +21,11 @@ async def main():
     start_scheduler()
 
     bot = Bot(token=settings.client_bot_token)
-    dp = Dispatcher(storage=MemoryStorage())
+    storage = RedisStorage.from_url(
+        settings.redis_url,
+        key_builder=DefaultKeyBuilder(with_bot_id=True, prefix="fsm_client")
+    )
+    dp = Dispatcher(storage=storage)
 
     dp.include_router(onboarding.router)
     dp.include_router(profile.router)
