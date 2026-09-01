@@ -133,3 +133,49 @@ async def get_all_categories() -> list[Category]:
     async with async_session() as session:
         result = await session.execute(select(Category))
         return list(result.scalars().all())
+
+async def create_pending_salon(name: str, address: str, latitude: float, longitude: float, owner_telegram_id: int) -> Salon:
+    async with async_session() as session:
+        salon = Salon(
+            name=name,
+            address=address,
+            latitude=latitude,
+            longitude=longitude,
+            is_approved=False,
+            owner_telegram_id=owner_telegram_id,
+        )
+        session.add(salon)
+        await session.commit()
+        await session.refresh(salon)
+        return salon
+
+
+async def approve_salon(salon_id: int) -> Salon | None:
+    async with async_session() as session:
+        result = await session.execute(select(Salon).where(Salon.id == salon_id))
+        salon = result.scalar_one_or_none()
+        if salon is None:
+            return None
+        salon.is_approved = True
+        await session.commit()
+        await session.refresh(salon)
+        return salon
+
+
+async def reject_salon(salon_id: int) -> Salon | None:
+    async with async_session() as session:
+        result = await session.execute(select(Salon).where(Salon.id == salon_id))
+        salon = result.scalar_one_or_none()
+        if salon is None:
+            return None
+        await session.delete(salon)
+        await session.commit()
+        return salon
+
+
+async def get_salon_by_owner(owner_telegram_id: int) -> Salon | None:
+    async with async_session() as session:
+        result = await session.execute(
+            select(Salon).where(Salon.owner_telegram_id == owner_telegram_id)
+        )
+        return result.scalar_one_or_none()

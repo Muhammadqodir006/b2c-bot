@@ -97,16 +97,20 @@ async def phone_received(message: Message, state: FSMContext):
 
     if master is None:
         text = (
-            "❌ Siz hali tizimda usta sifatida ro'yxatga olinmagansiz.\nSalon egangiz bilan bog'laning."
+            "❌ Siz hali tizimda usta sifatida ro'yxatga olinmagansiz.\n"
+            "Yangi salon ochmoqchimisiz?"
             if language == "uz"
-            else "❌ Вы ещё не зарегистрированы в системе как мастер.\nСвяжитесь с владельцем салона."
+            else "❌ Вы ещё не зарегистрированы как мастер.\n"
+            "Хотите открыть новый салон?"
         )
-        await message.answer(text, reply_markup=ReplyKeyboardRemove())
-        return
-
-    await link_master_telegram(master.id, message.from_user.id)
-    await update_master_language(master.id, language)
-    await state.clear()
+    button_text = "🏢 Salon qo'shish" if language == "uz" else "🏢 Добавить салон"
+    kb = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=button_text)]],
+            resize_keyboard=True,
+        )
+    await state.update_data(language=language)
+    await message.answer(text, reply_markup=kb)
+    return
 
     text = (
         f"✅ Xush kelibsiz, {master.full_name}!"
