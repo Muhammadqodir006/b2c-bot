@@ -75,6 +75,8 @@ class Salon(Base):
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     rating: Mapped[float] = mapped_column(default=0.0)
+    is_approved: Mapped[bool] = mapped_column(default=False)
+    owner_telegram_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
 
     services: Mapped[list["Service"]] = relationship(
         back_populates="salon"
