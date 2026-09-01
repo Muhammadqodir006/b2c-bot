@@ -1,4 +1,4 @@
-```python
+
 from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import (
@@ -228,4 +228,4 @@ async def phone_not_received(
     )
 
     await message.answer(text)
-```
+
