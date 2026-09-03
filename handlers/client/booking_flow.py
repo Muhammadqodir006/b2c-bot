@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from aiogram import Bot
 from config import settings
 from handlers.master.notifications import send_new_booking_notification
@@ -360,10 +360,10 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
             )
             return
 
-        await state.update_data(
-            master_id=selected_master.id,
-            master_name=selected_master.full_name,
-        )
+            await state.update_data(
+        scheduled_at=scheduled_at_utc.isoformat(),  
+        scheduled_time=selected_time,
+    )
 
     else:
         bookings = await booking_repo.get_master_bookings_for_slot(
@@ -414,12 +414,13 @@ async def confirm_booking(
     state: FSMContext,
     bot: Bot,
 ):
-    data = await state.get_data()
+    
+    scheduled_at = datetime.fromisoformat(data["scheduled_at"])
 
     # Oxirgi tekshiruv — tasdiqlashgacha vaqt band bo'lib qolmaganmi
     available = await is_slot_available(
         data["master_id"],
-        data["scheduled_at"],
+        scheduled_at,
         data["duration_minutes"],
     )
 
@@ -449,12 +450,12 @@ async def confirm_booking(
         salon_id=data["salon_id"],
         master_id=data["master_id"],
         service_id=data["service_id"],
-        scheduled_at=data["scheduled_at"],
+        scheduled_at=scheduled_at
     )
 
     # --- INTEGRATSIYA: usta xabar olsin va eslatma rejalashtirilsin ---
     await send_new_booking_notification(master_bot, booking.id)
-    await schedule_booking_reminders(bot, booking.id, booking.scheduled_at)
+    await schedule_booking_reminders(bot, booking.id, scheduled_at)
     # ------------------------------------------------------------------
 
     await callback.message.edit_text(
