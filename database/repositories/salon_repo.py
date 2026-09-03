@@ -176,7 +176,10 @@ async def reject_salon(salon_id: int) -> Salon | None:
 async def get_salon_by_owner(owner_telegram_id: int) -> Salon | None:
     async with async_session() as session:
         result = await session.execute(
-            select(Salon).where(Salon.owner_telegram_id == owner_telegram_id)
+            select(Salon)
+            .where(Salon.owner_telegram_id == owner_telegram_id)
+            .order_by(Salon.id.desc())
+            .limit(1)
         )
         return result.scalar_one_or_none()
     
