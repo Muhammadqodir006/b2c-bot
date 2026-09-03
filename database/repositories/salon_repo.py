@@ -69,7 +69,7 @@ async def update_master_language(master_id: int, language: str) -> Master | None
         return master
 
 
-async def create_master(salon_id: int, full_name: str, phone: str) -> Master:
+async def create_master(salon_id: int | None, full_name: str, phone: str) -> Master:
     async with async_session() as session:
         master = Master(salon_id=salon_id, full_name=full_name, phone=phone)
         session.add(master)

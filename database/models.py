@@ -112,7 +112,7 @@ class Master(Base):
     __tablename__ = "masters"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    salon_id: Mapped[int] = mapped_column(ForeignKey("salons.id"))
+    salon_id: Mapped[int] = mapped_column(ForeignKey("salons.id"), nullable=True)
     telegram_id: Mapped[int] = mapped_column(
         BigInteger, unique=True, nullable=True
     )

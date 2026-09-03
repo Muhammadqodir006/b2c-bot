@@ -161,9 +161,9 @@ async def phone_received(message: Message, state: FSMContext):
     salons = await get_all_salons()
     if salons:
         salon_list = "\n".join(f"ID {s.id} — {s.name}" for s in salons)
-        text = f"Mavjud salonlar:\n{salon_list}\n\nUsta biriktiriladigan salon ID sini kiriting:"
+        text = f"Mavjud salonlar:\n{salon_list}\n\nUsta biriktiriladigan salon ID sini kiriting (yoki 0 — salonsiz, keyinroq o'zi qo'shadi):"
     else:
-        text = "Hozircha bazada salonlar yo'q. Usta biriktiriladigan salon ID sini kiriting:"
+        text = "Hozircha bazada salonlar yo'q. Salon ID kiriting, yoki 0 yozing (salonsiz qo'shish uchun):"
 
     await message.answer(text)
 
@@ -178,8 +178,18 @@ async def phone_not_received(message: Message, state: FSMContext):
 @router.message(AddMasterStates.waiting_for_salon_id, F.text)
 async def salon_id_received(message: Message, state: FSMContext):
     raw = message.text.strip()
+
+    if raw == "0":
+        await state.update_data(salon_id=None, salon_name="Belgilanmagan (keyinroq o'zi qo'shadi)")
+        await state.set_state(AddMasterStates.confirming)
+
+        data = await state.get_data()
+        text = f"{data['full_name']}, {data['phone']}, Salon: {data['salon_name']} — to'g'rimi?"
+        await message.answer(text, reply_markup=get_confirm_kb())
+        return
+
     if not raw.isdigit():
-        await message.answer("Salon ID raqam bo'lishi kerak. Qaytadan kiriting:")
+        await message.answer("Salon ID raqam bo'lishi kerak, yoki 0 yozing (salonsiz qo'shish uchun). Qaytadan kiriting:")
         return
 
     salon_id = int(raw)
