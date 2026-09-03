@@ -8,6 +8,7 @@ from aiogram.types import (
 
 from config import settings
 from database.repositories.salon_repo import create_pending_salon, approve_salon, reject_salon, get_salon, link_master_to_salon, get_salon_by_owner, get_all_categories, create_service
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 router = Router()
 
