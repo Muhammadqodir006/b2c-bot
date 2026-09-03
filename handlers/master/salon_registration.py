@@ -7,7 +7,7 @@ from aiogram.types import (
 )
 
 from config import settings
-from database.repositories.salon_repo import create_pending_salon, approve_salon, reject_salon, get_salon
+from database.repositories.salon_repo import create_pending_salon, approve_salon, reject_salon, get_salon, link_master_to_salon
 
 router = Router()
 
@@ -158,6 +158,9 @@ async def handle_approve_salon(callback):
     if salon is None:
         await callback.answer("Salon topilmadi.", show_alert=True)
         return
+    
+    if salon.owner_telegram_id:
+        await link_master_to_salon(salon.owner_telegram_id, salon.id)
 
     await callback.message.edit_text(callback.message.text + "\n\n✅ TASDIQLANDI")
     await callback.answer()

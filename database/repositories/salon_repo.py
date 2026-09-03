@@ -179,3 +179,16 @@ async def get_salon_by_owner(owner_telegram_id: int) -> Salon | None:
             select(Salon).where(Salon.owner_telegram_id == owner_telegram_id)
         )
         return result.scalar_one_or_none()
+    
+async def link_master_to_salon(owner_telegram_id: int, salon_id: int) -> Master | None:
+    async with async_session() as session:
+        result = await session.execute(
+            select(Master).where(Master.telegram_id == owner_telegram_id)
+        )
+        master = result.scalar_one_or_none()
+        if master is None:
+            return None
+        master.salon_id = salon_id
+        await session.commit()
+        await session.refresh(master)
+        return master
