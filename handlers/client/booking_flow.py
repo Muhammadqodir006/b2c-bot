@@ -380,7 +380,7 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
             return
 
     await state.update_data(
-        scheduled_at=scheduled_at_utc,  # UTC — bazaga shu holda yoziladi
+        scheduled_at=scheduled_at_utc.isoformat(),  # UTC — bazaga shu holda yoziladi
         scheduled_time=selected_time,  # faqat ko'rsatish uchun (local matn)
     )
 
