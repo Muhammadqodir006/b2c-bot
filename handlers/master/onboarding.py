@@ -191,19 +191,20 @@ async def phone_received(
         language,
     )
 
-    text = (
-        f"✅ Xush kelibsiz, {master.full_name}!\n\n"
-        "Salon qo'shmoqchimisiz?"
-        if language == "uz"
-        else
-        f"✅ Добро пожаловать, {master.full_name}!\n\n"
-        "Хотите добавить салон?"
-    )
-
-    await message.answer(
-        text,
-        reply_markup=get_add_salon_kb(language),
-    )
+    if master.salon_id is not None:
+        text = (
+            f"✅ Xush kelibsiz, {master.full_name}!"
+            if language == "uz"
+            else f"✅ Добро пожаловать, {master.full_name}!"
+        )
+        await message.answer(text, reply_markup=get_master_menu_kb(language))
+    else:
+        text = (
+            f"✅ Xush kelibsiz, {master.full_name}!\n\nSalon qo'shmoqchimisiz?"
+            if language == "uz"
+            else f"✅ Добро пожаловать, {master.full_name}!\n\nХотите добавить салон?"
+        )
+        await message.answer(text, reply_markup=get_add_salon_kb(language))
 
     # Endi master salon qo'shish bosqichida
     await state.clear()
