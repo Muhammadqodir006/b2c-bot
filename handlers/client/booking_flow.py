@@ -415,6 +415,8 @@ async def confirm_booking(
     bot: Bot,
 ):
     
+    data = await state.get_data()
+    
     scheduled_at = datetime.fromisoformat(data["scheduled_at"])
 
     # Oxirgi tekshiruv — tasdiqlashgacha vaqt band bo'lib qolmaganmi
