@@ -7,7 +7,7 @@ from aiogram.types import (
 )
 
 from config import settings
-from database.repositories.salon_repo import create_pending_salon, approve_salon, reject_salon, get_salon, link_master_to_salon
+from database.repositories.salon_repo import create_pending_salon, approve_salon, reject_salon, get_salon, link_master_to_salon, get_salon_by_owner, get_all_categories, create_service
 
 router = Router()
 
@@ -46,6 +46,13 @@ def get_admin_review_kb(salon_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="✅ Tasdiqlash", callback_data=f"approve_salon:{salon_id}"),
             InlineKeyboardButton(text="❌ Rad etish", callback_data=f"reject_salon:{salon_id}"),
         ]]
+    )
+    
+def get_add_service_kb(language: str = "uz"):
+    text = "💈 Xizmat qo'shish" if language == "uz" else "💈 Добавить услугу"
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=text)]],
+        resize_keyboard=True,
     )
 
 
@@ -158,19 +165,27 @@ async def handle_approve_salon(callback):
     if salon is None:
         await callback.answer("Salon topilmadi.", show_alert=True)
         return
-    
+
     if salon.owner_telegram_id:
-        await link_master_to_salon(salon.owner_telegram_id, salon.id)
+        master = await link_master_to_salon(salon.owner_telegram_id, salon.id)
+        master_lang = master.language if master else "uz"
+    else:
+        master_lang = "uz"
 
     await callback.message.edit_text(callback.message.text + "\n\n✅ TASDIQLANDI")
     await callback.answer()
 
     if salon.owner_telegram_id:
+        text = (
+            f"🎉 Saloningiz '{salon.name}' tasdiqlandi!\n\nEndi kamida bitta xizmat qo'shing:"
+            if master_lang == "uz"
+            else f"🎉 Ваш салон '{salon.name}' подтверждён!\n\nТеперь добавьте хотя бы одну услугу:"
+        )
         await master_bot.send_message(
             chat_id=salon.owner_telegram_id,
-            text=f"🎉 Saloningiz '{salon.name}' tasdiqlandi! Endi botdan to'liq foydalanishingiz mumkin. /start bosing."
+            text=text,
+            reply_markup=get_add_service_kb(master_lang),
         )
-
 
 @router.callback_query(F.data.startswith("reject_salon:"))
 async def handle_reject_salon(callback):
@@ -192,3 +207,82 @@ async def handle_reject_salon(callback):
             chat_id=owner_id,
             text="😔 Salon so'rovingiz rad etildi. Qo'shimcha ma'lumot uchun admin bilan bog'laning."
         )
+        
+class OwnerAddServiceStates(StatesGroup):
+    waiting_for_name = State()
+    waiting_for_price = State()
+    waiting_for_duration = State()
+    waiting_for_category = State()
+
+
+def get_category_kb(categories, language: str = "uz"):
+    builder = InlineKeyboardBuilder()
+    for cat in categories:
+        builder.button(text=cat.name, callback_data=f"owner_cat:{cat.id}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+@router.message(F.text.in_(["💈 Xizmat qo'shish", "💈 Добавить услугу"]))
+async def start_owner_add_service(message: Message, state: FSMContext):
+    salon = await get_salon_by_owner(message.from_user.id)
+    if salon is None:
+        return
+
+    await state.update_data(owner_salon_id=salon.id)
+    await state.set_state(OwnerAddServiceStates.waiting_for_name)
+    await message.answer("Xizmat nomini kiriting:", reply_markup=ReplyKeyboardRemove())
+
+
+@router.message(OwnerAddServiceStates.waiting_for_name, F.text)
+async def owner_service_name(message: Message, state: FSMContext):
+    await state.update_data(service_name=message.text.strip())
+    await state.set_state(OwnerAddServiceStates.waiting_for_price)
+    await message.answer("Narxini kiriting (so'mda, faqat raqam):")
+
+
+@router.message(OwnerAddServiceStates.waiting_for_price, F.text)
+async def owner_service_price(message: Message, state: FSMContext):
+    if not message.text.strip().isdigit():
+        await message.answer("Narx raqam bo'lishi kerak. Qaytadan kiriting:")
+        return
+    await state.update_data(service_price=int(message.text.strip()))
+    await state.set_state(OwnerAddServiceStates.waiting_for_duration)
+    await message.answer("Davomiyligini kiriting (daqiqada, masalan 45):")
+
+
+@router.message(OwnerAddServiceStates.waiting_for_duration, F.text)
+async def owner_service_duration(message: Message, state: FSMContext):
+    if not message.text.strip().isdigit():
+        await message.answer("Davomiylik raqam bo'lishi kerak. Qaytadan kiriting:")
+        return
+    await state.update_data(service_duration=int(message.text.strip()))
+
+    from database.repositories.salon_repo import get_all_categories
+    categories = await get_all_categories()
+    if not categories:
+        await message.answer("Bazada kategoriyalar yo'q. Admin bilan bog'laning.")
+        await state.clear()
+        return
+
+    await state.set_state(OwnerAddServiceStates.waiting_for_category)
+    await message.answer("Kategoriyani tanlang:", reply_markup=get_category_kb(categories))
+
+
+@router.callback_query(OwnerAddServiceStates.waiting_for_category, F.data.startswith("owner_cat:"))
+async def owner_service_category(callback, state: FSMContext):
+    category_id = int(callback.data.split(":")[1])
+    data = await state.get_data()
+
+    from database.repositories.salon_repo import create_service
+    await create_service(
+        salon_id=data["owner_salon_id"],
+        category_id=category_id,
+        name=data["service_name"],
+        price=data["service_price"],
+        duration_minutes=data["service_duration"],
+    )
+
+    await state.clear()
+    await callback.message.edit_text("✅ Xizmat qo'shildi! Endi /start bosing.")
+    await callback.answer()
